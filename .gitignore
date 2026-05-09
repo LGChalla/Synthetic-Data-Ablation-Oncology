@@ -1,0 +1,16 @@
+results/
+adapters/
+data_splits/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv
+venv/
+*.bin
+*.safetensors
+*.pt
+*.ckpt
+faiss_index/
+.DS_Store
+Thumbs.db
