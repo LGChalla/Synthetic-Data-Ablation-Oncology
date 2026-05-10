@@ -1,4 +1,4 @@
-"""
+﻿"""
 Ablation 3 — RAG vs No-RAG
 Condition: FULL GATE + MedCPT RAG  (Adapter E)
 ===============================================
@@ -58,7 +58,7 @@ def generate(model_id: str, n_runs: int, results_dir: str,
     records, admitted, rejected = [], 0, 0
 
     for i in range(n_runs):
-        run_key = f"{CONDITION}::{i}"
+        run_key = f"{CONDITION}::{model_id.split(chr(47))[-1]}::{i}"
         if run_key in completed:
             print(f"  [SKIP] {i+1}/{n_runs}")
             continue

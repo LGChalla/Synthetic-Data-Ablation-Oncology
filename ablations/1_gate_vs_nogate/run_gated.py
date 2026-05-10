@@ -1,4 +1,4 @@
-"""
+﻿"""
 Ablation 1 — Gate vs No-Gate
 Condition: FULL GATE, NO RAG  (Adapter D)
 ==========================================
@@ -49,7 +49,7 @@ def generate(model_id: str, n_runs: int, results_dir: str) -> list:
     records, admitted, rejected = [], 0, 0
 
     for i in range(n_runs):
-        run_key = f"{CONDITION}::{i}"
+        run_key = f"{CONDITION}::{model_id.split(chr(47))[-1]}::{i}"
         if run_key in completed:
             print(f"  [SKIP] {i+1}/{n_runs}")
             continue
