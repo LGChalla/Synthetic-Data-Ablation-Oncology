@@ -29,10 +29,10 @@ All five adapters are evaluated on the same three test sets under TSTR — train
 ## Pipeline
 
 ```
-preprocessing/mtsamples_prep.py     extract TNM labels from MTSamples
+preprocessing/mtsamples_prep.py      extract TNM labels from MTSamples
 
 Phase 1  (phases/phase1_generate.py)
-  Generate records under each condition (run per ablation)
+  Generate records under a specific condition
 
 Phase 2  (phases/phase2_audit.py)
   Schema compliance  ·  Gate decomposition  ·  Diversity audit
@@ -46,28 +46,82 @@ Phase 3  (phases/phase3_benchmark.py)
   Per-class T-stage accuracy with 95% bootstrap CI
 ```
 
-**Ablation runners** (each orchestrates Phases 1 + 2 + 4 for their conditions):
+---
+
+## Repository
+
 ```
-ablations/ablation_gate_vs_nogate.py      A vs D
-ablations/ablation_gate_decomposition.py  B vs C vs D
-ablations/ablation_rag_vs_norag.py        D vs E
+core/                    Shared utilities
+  gate.py                G(x) gate components (schema, ontology, logic)
+  generation.py          Model loading and generation (4-bit NF4, GPT-4o)
+  schemas.py             rigid.v3 schema definition
+  tnm_grid.py            32-cell TNM grid, diversity audit, entropy gates
+  bioportal.py           SNOMED CT annotation
+  medcpt.py              MedCPT RAG retrieval over FAISS PubMed index
+  logging_utils.py       JSONL logging and checkpointing
+
+phases/                  Phase 1–4 (each accepts a condition argument)
+
+ablations/               Three independent ablation studies — each runs fully standalone
+  1_gate_vs_nogate/
+    run_ungated.py       Phase 1 + Phase 4 for Adapter A (no gate)
+    run_gated.py         Phase 1 + Phase 4 for Adapter D (full G(x), no RAG)
+    compare.py           Side-by-side quality table with per-model breakdown
+
+  2_gate_decomposition/
+    run_schema_only.py   Phase 1 + Phase 4 for Adapter B (schema only)
+    run_schema_onto.py   Phase 1 + Phase 4 for Adapter C (schema + ontology)
+    run_full_gate.py     Phase 1 + Phase 4 for Adapter D (full G(x))
+    compare.py           Sequential gate decomposition table with per-model breakdown
+
+  3_rag_vs_norag/
+    run_norag.py         Phase 1 + Phase 4 for Adapter D (full gate, no retrieval)
+    run_rag.py           Phase 1 + Phase 4 for Adapter E (full gate + MedCPT RAG)
+    compare.py           SNOMED density comparison + Mann-Whitney U test
+
+preprocessing/           MTSamples TNM extraction
+config.py                All paths, model IDs, and hyperparameters
 ```
 
-**Run everything:**
-```bash
-python run_all.py --model meta-llama/Llama-3.3-70B-Instruct --runs 64
-```
+---
 
-**Run one ablation:**
-```bash
-python ablations/ablation_gate_vs_nogate.py --runs 64
-python ablations/ablation_gate_decomposition.py --runs 64
-python ablations/ablation_rag_vs_norag.py --runs 32 --faiss-index /path/to/index.faiss
-```
+## Running the Studies
 
-**Skip adapter training** (use existing adapters for benchmark):
+Each study folder runs independently. Run all three models per condition — ClinicalCamel's low compliance is where the gate decomposition story becomes meaningful.
+
 ```bash
-python run_all.py --skip-training
+# Set env vars first
+export HF_TOKEN=your_token
+export OPENAI_API_KEY=your_key
+export BIOPORTAL_API_KEY=your_key
+
+# Ablation 1 — Gate vs No-Gate
+python ablations/1_gate_vs_nogate/run_ungated.py --model meta-llama/Llama-3.3-70B-Instruct --runs 128
+python ablations/1_gate_vs_nogate/run_ungated.py --model wanglab/ClinicalCamel-70B          --runs 128
+python ablations/1_gate_vs_nogate/run_ungated.py --model gpt-4o                             --runs 128
+
+python ablations/1_gate_vs_nogate/run_gated.py   --model meta-llama/Llama-3.3-70B-Instruct --runs 128
+python ablations/1_gate_vs_nogate/run_gated.py   --model wanglab/ClinicalCamel-70B          --runs 128
+python ablations/1_gate_vs_nogate/run_gated.py   --model gpt-4o                             --runs 128
+
+python ablations/1_gate_vs_nogate/compare.py
+
+# Ablation 2 — Gate Decomposition
+python ablations/2_gate_decomposition/run_schema_only.py --model meta-llama/Llama-3.3-70B-Instruct --runs 128
+python ablations/2_gate_decomposition/run_schema_onto.py --model meta-llama/Llama-3.3-70B-Instruct --runs 128
+python ablations/2_gate_decomposition/run_full_gate.py   --model meta-llama/Llama-3.3-70B-Instruct --runs 128
+# (repeat for ClinicalCamel and GPT-4o)
+python ablations/2_gate_decomposition/compare.py
+
+# Ablation 3 — RAG vs No-RAG
+python ablations/3_rag_vs_norag/run_norag.py --model meta-llama/Llama-3.3-70B-Instruct --runs 128
+python ablations/3_rag_vs_norag/run_rag.py   --model meta-llama/Llama-3.3-70B-Instruct --runs 128 \
+  --faiss-index /path/to/medcpt_index.faiss
+# (repeat for other models)
+python ablations/3_rag_vs_norag/compare.py
+
+# TSTR benchmark — after all adapters trained
+python phases/phase3_benchmark.py
 ```
 
 ---
@@ -87,24 +141,9 @@ export FAISS_TEXTS_PATH=/path/to/pubmed_abstracts.txt
 
 ---
 
-## Repository
-
-```
-core/          Gate, generation, schemas, TNM grid, BioPortal, MedCPT, logging
-phases/        Phase 1-4 (each accepts a condition argument)
-ablations/     Three ablation runners — each drives Phase 1+2+4
-preprocessing/ MTSamples TNM extraction
-analysis/      Figures and summary tables
-data/          Ablation design CSVs
-config.py      Central configuration
-run_all.py     Full pipeline orchestrator
-```
-
----
-
 ## What Is Next
 
-- Expand to colorectal, breast — same gate, new TNM grids
+- Expand to colorectal and breast — same gate, new TNM grids
 - Demographic stratification grid — address the sex/age bias in generated records
 - MedCPT Cross-Encoder reranking — fix retrieval concentration to a small paper set
 - Multi-institutional TSTR — MIMIC-III and eICU for validated ground truth
