@@ -98,6 +98,23 @@ def load_hf_model(model_id: str):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # ClinicalCamel-70B ships without a chat_template in its tokenizer config.
+    # Without this patch, apply_chat_template falls back to plain text and
+    # JSON compliance drops to ~0% — confirmed in BIBM Table II.
+    # The Llama-style header/eot_id template is what ClinicalCamel responds to.
+    if not getattr(tokenizer, "chat_template", None):
+        tokenizer.chat_template = (
+            "{% if messages %}"
+            "{% for m in messages %}"
+            "<|start_header_id|>{{ m['role'] }}<|end_header_id|>\n"
+            "{{ m['content'] }}\n"
+            "<|eot_id|>\n"
+            "{% endfor %}"
+            "{% endif %}"
+            "<|start_header_id|>assistant<|end_header_id|>\n"
+        )
+        print(f"  [INFO] {model_id}: no chat_template — attached Llama-style fallback.")
+
     bnb = BitsAndBytesConfig(
         load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16,
         bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,

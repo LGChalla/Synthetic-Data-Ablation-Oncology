@@ -87,3 +87,9 @@ MTSAMPLES_DATASET  = "harishnair04/mtsamples"
 MTSAMPLES_LUNG_CSV = os.path.join(DATA_SPLITS_DIR, "mtsamples_lung_gold.csv")
 MTSAMPLES_ALL_CSV  = os.path.join(DATA_SPLITS_DIR, "mtsamples_all_cancer_gold.csv")
 TSTR_BOOTSTRAP_N   = 1000
+
+# ── Generator models (both used in all ablations) ─────────────────────────────
+GENERATOR_MODELS = [
+    "meta-llama/Llama-3.3-70B-Instruct",
+    "wanglab/ClinicalCamel-70B",
+]

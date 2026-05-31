@@ -1,4 +1,4 @@
-﻿"""
+"""
 Ablation 3 — RAG vs No-RAG
 Condition: FULL GATE, NO RAG  (Adapter D)
 ==========================================
@@ -103,7 +103,9 @@ def generate(model_id: str, n_runs: int, results_dir: str) -> list:
 
 def main():
     parser = argparse.ArgumentParser(description="Ablation 3 — No-RAG baseline")
-    parser.add_argument("--model",         default=cfg.GENERATOR_MODEL)
+    parser.add_argument("--models",
+                        default=",".join(cfg.GENERATOR_MODELS),
+                        help="Comma-separated model IDs to run in sequence.")
     parser.add_argument("--runs",          type=int, default=cfg.RAG_ABLATION_RUNS)
     parser.add_argument("--results-dir",   default=cfg.RESULTS_DIR)
     parser.add_argument("--adapters-dir",  default=cfg.ADAPTERS_DIR)
@@ -115,7 +117,9 @@ def main():
     print(f"  Model: {args.model}  |  Runs: {args.runs}")
     print("="*65)
 
-    generate(args.model, args.runs, args.results_dir)
+    for model_id in [m.strip() for m in args.models.split(',') if m.strip()]:
+        print(f"\n  >>> Model: {model_id}")
+        generate(model_id, args.runs, args.results_dir)
 
     if not args.skip_training:
         print("\n[Phase 4] Training adapter_D_full_norag...")

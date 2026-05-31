@@ -1,4 +1,4 @@
-﻿"""
+"""
 Ablation 3 — RAG vs No-RAG
 Condition: FULL GATE + MedCPT RAG  (Adapter E)
 ===============================================
@@ -119,7 +119,9 @@ def generate(model_id: str, n_runs: int, results_dir: str,
 
 def main():
     parser = argparse.ArgumentParser(description="Ablation 3 — Full gate + RAG (Adapter E)")
-    parser.add_argument("--model",         default=cfg.GENERATOR_MODEL)
+    parser.add_argument("--models",
+                        default=",".join(cfg.GENERATOR_MODELS),
+                        help="Comma-separated model IDs to run in sequence.")
     parser.add_argument("--runs",          type=int, default=cfg.RAG_ABLATION_RUNS)
     parser.add_argument("--faiss-index",   default=cfg.FAISS_INDEX_PATH)
     parser.add_argument("--faiss-texts",   default=cfg.FAISS_TEXTS_PATH)
