@@ -114,7 +114,7 @@ def main():
 
     print("\n" + "="*65)
     print(f"ABLATION 1 — FULL GATE (No RAG)  |  Adapter D")
-    print(f"  Model : {args.model}")
+    print(f"  Model : {args.models}")
     print(f"  Runs  : {args.runs}")
     print("="*65)
 

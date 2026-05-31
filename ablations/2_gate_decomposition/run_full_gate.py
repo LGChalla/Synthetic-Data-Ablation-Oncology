@@ -119,7 +119,7 @@ def main():
 
     print("\n" + "="*65)
     print("ABLATION 2 — FULL GATE, NO RAG (C3)  |  Adapter D")
-    print(f"  Model: {args.model}  |  Runs: {args.runs}")
+    print(f"  Model: {args.models}  |  Runs: {args.runs}")
     print("="*65)
 
     for model_id in [m.strip() for m in args.models.split(',') if m.strip()]:

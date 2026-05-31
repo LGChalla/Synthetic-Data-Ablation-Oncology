@@ -107,7 +107,7 @@ def main():
 
     print("\n" + "="*65)
     print(f"ABLATION 1 — UNGATED  |  Adapter A")
-    print(f"  Model : {args.model}")
+    print(f"  Model : {args.models}")
     print(f"  Runs  : {args.runs}")
     print("="*65)
 

@@ -132,12 +132,12 @@ def main():
 
     print("\n" + "="*65)
     print("ABLATION 3 — FULL GATE + RAG  |  Adapter E")
-    print(f"  Model      : {args.model}")
+    print(f"  Model      : {args.models}")
     print(f"  Runs       : {args.runs}")
     print(f"  FAISS index: {args.faiss_index or 'not set (keyword fallback)'}")
     print("="*65)
 
-    generate(args.model, args.runs, args.results_dir,
+    generate(args.models, args.runs, args.results_dir,
              args.faiss_index, args.faiss_texts)
 
     if not args.skip_training:
