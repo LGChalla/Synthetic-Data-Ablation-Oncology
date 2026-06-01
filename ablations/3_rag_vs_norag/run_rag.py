@@ -137,8 +137,10 @@ def main():
     print(f"  FAISS index: {args.faiss_index or 'not set (keyword fallback)'}")
     print("="*65)
 
-    generate(args.models, args.runs, args.results_dir,
-             args.faiss_index, args.faiss_texts)
+    for model_id in [m.strip() for m in args.models.split(',') if m.strip()]:
+        print(f"\n  >>> Model: {model_id}")
+        generate(model_id, args.runs, args.results_dir,
+                 args.faiss_index, args.faiss_texts)
 
     if not args.skip_training:
         print("\n[Phase 4] Training adapter_E_full_rag...")
