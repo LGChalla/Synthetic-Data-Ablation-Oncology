@@ -162,7 +162,7 @@ def train_adapter(condition: str, results_dir: str, adapters_dir: str):
     )
     print(f"  Loading base model (4-bit NF4)...")
     model = AutoModelForCausalLM.from_pretrained(
-        cfg.FINETUNE_MODEL, quantization_config=bnb, device_map={"": "cuda:0"})
+        cfg.FINETUNE_MODEL, quantization_config=bnb, device_map={"": torch.cuda.current_device()})
     model = prepare_model_for_kbit_training(model)
     model = get_peft_model(model, LoraConfig(**cfg.LORA_CONFIG))
     model.print_trainable_parameters()
