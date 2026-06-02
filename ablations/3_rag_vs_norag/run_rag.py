@@ -29,7 +29,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import config as cfg
-from core.generation    import load_model, generate_one, parse_output, unload_model
+from core.generation    import load_hf_model, generate_one, parse_output, unload_model
 from core.gate          import evaluate as gate_evaluate
 from core.bioportal     import annotate as snomed_annotate
 from core.medcpt        import build_retriever, keyword_context
@@ -53,7 +53,11 @@ def generate(model_id: str, n_runs: int, results_dir: str,
     else:
         print("  [INFO] MedCPT unavailable — using keyword_context() fallback.")
 
-    model, tokenizer = load_model(model_id)
+    if is_openai_model(model_id):
+        model, tokenizer = None, None
+        print(f"  [OpenAI] {model_id} — using API.")
+    else:
+        model, tokenizer = load_hf_model(model_id)
     completed        = load_completed(ckpt_path)
     records, admitted, rejected = [], 0, 0
 
