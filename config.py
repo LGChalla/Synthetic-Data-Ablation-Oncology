@@ -90,6 +90,7 @@ TSTR_BOOTSTRAP_N   = 1000
 
 # ── Generator models (both used in all ablations) ─────────────────────────────
 GENERATOR_MODELS = [
-    "meta-llama/Llama-3.3-70B-Instruct",
-    "wanglab/ClinicalCamel-70B",
+    "gpt-4o",                              # OpenAI API — requires OPENAI_API_KEY
+    "meta-llama/Llama-3.3-70B-Instruct",   # local HuggingFace, 4-bit NF4
+    "wanglab/ClinicalCamel-70B",           # local HuggingFace, 4-bit NF4
 ]
