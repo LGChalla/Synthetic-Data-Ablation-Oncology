@@ -29,7 +29,7 @@ import torch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import config as cfg
-from core.generation    import load_hf_model, generate_one, parse_output, unload_model
+from core.generation    import load_model, generate_one, parse_output, unload_model
 from core.gate          import evaluate as gate_evaluate
 from core.bioportal     import annotate as snomed_annotate
 from core.tnm_grid      import get_tnm_cell, build_case, audit_diversity, print_diversity_report
@@ -45,7 +45,7 @@ def generate(model_id: str, n_runs: int, results_dir: str) -> list:
     ckpt_path   = os.path.join(results_dir, f"phase1_{CONDITION}.checkpoint")
     os.makedirs(results_dir, exist_ok=True)
 
-    model, tokenizer = load_hf_model(model_id)
+    model, tokenizer = load_model(model_id)
     completed        = load_completed(ckpt_path)
     if completed:
         print(f"  Checkpoint: {len(completed)} run(s) already done.")

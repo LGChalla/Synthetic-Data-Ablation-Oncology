@@ -81,6 +81,25 @@ def parse_output(raw: str):
         return parsed, parsed is not None
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def is_openai_model(model_id: str) -> bool:
+    """Returns True for any OpenAI API model (gpt-4o, gpt-4, gpt-3.5-turbo, etc.)"""
+    return any(model_id.lower().startswith(p) for p in ("gpt-", "o1-", "o3-"))
+
+
+def load_model(model_id: str):
+    """
+    Unified model loader.
+    - OpenAI models: returns (None, None) — no local weights needed.
+    - HuggingFace models: loads 4-bit NF4 via load_hf_model().
+    """
+    if is_openai_model(model_id):
+        print(f"  [OpenAI] {model_id} — using API, no local load needed.")
+        return None, None
+    return load_hf_model(model_id)
+
+
 # ── Model loading ─────────────────────────────────────────────────────────────
 
 def load_hf_model(model_id: str):
@@ -148,7 +167,10 @@ def load_hf_model(model_id: str):
 
 
 def unload_model(model, tokenizer):
-    del model, tokenizer
+    if model is not None:
+        del model
+    if tokenizer is not None:
+        del tokenizer
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.synchronize()
