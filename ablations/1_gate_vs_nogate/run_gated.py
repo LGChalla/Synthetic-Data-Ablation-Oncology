@@ -25,7 +25,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import config as cfg
-from core.generation    import load_hf_model, generate_one, parse_output, unload_model
+from core.generation    import load_hf_model, is_openai_model, generate_one, parse_output, unload_model
 from core.gate          import evaluate as gate_evaluate
 from core.bioportal     import annotate as snomed_annotate
 from core.tnm_grid      import get_tnm_cell, build_case, audit_diversity, print_diversity_report
