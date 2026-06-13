@@ -208,8 +208,8 @@ def main():
 
         for set_name, df, label_col in [
             ("synthetic_holdout", synth_df,                  "T_label"),
-            ("mtsamples_lung",    mt_sets.get("lung",    pd.DataFrame()), "T_label"),
-            ("mtsamples_all",     mt_sets.get("all_cancer", pd.DataFrame()), "T_label"),
+            ("tcga_lung",        mt_sets.get("lung",       pd.DataFrame()), "T_label"),
+            ("tcga_crosstumor",  mt_sets.get("all_cancer", pd.DataFrame()), "T_label"),
         ]:
             if df.empty:
                 continue
