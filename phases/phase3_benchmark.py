@@ -194,7 +194,8 @@ def main():
     os.makedirs(args.export_dir, exist_ok=True)
 
     print("Loading test sets...")
-    mt_sets  = load_mtsamples(cfg.MTSAMPLES_LUNG_CSV, cfg.MTSAMPLES_ALL_CSV)
+    #mt_sets  = load_mtsamples(cfg.MTSAMPLES_LUNG_CSV, cfg.MTSAMPLES_ALL_CSV)
+    mt_sets  = load_mtsamples(cfg.TCGA_LUNG_CSV, cfg.TCGA_CROSS_CSV)
     synth_df = load_synthetic_holdout(args.results_dir)
     print(f"  Synthetic held-out: {len(synth_df)} records")
 
