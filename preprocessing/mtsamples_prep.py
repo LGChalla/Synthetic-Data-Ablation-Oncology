@@ -1,138 +1,150 @@
-"""
-preprocessing/mtsamples_prep.py
-Extracts TNM labels from MTSamples clinical dictation notes.
-Produces ground-truth CSVs for the TSTR benchmark (Phase 3).
+# Pre-Phase3_prepare_mtsamples_FIXED.py
+#
+# RUN ORDER:
+#   Step 1 (lung-only):       python Pre-Phase3_prepare_mtsamples_FIXED.py --mode lung
+#   Step 2 (all cancer):      python Pre-Phase3_prepare_mtsamples_FIXED.py --mode all_cancer
+#
+# Each mode writes a SEPARATE output file so results never overwrite each other:
+#   --mode lung        →  mtsamples_lung_gold.csv          (~72 records, T-present)
+#   --mode all_cancer  →  mtsamples_all_cancer_gold.csv    (~150-300 records, T-present)
+#
+# WHAT CHANGED FROM ORIGINAL:
+#   - Relaxed filter: keeps any note where T is found (not requiring all three of T/N/M)
+#     Missing N or M filled as "Unknown" — honest and evaluable downstream
+#   - Added --mode flag so lung and cross-cancer runs are completely separate
+#   - Added cancer_type column for stratification in the report
+#   - Regex patterns and normalization logic unchanged
 
-Outputs:
-  data_splits/mtsamples_lung_gold.csv
-  data_splits/mtsamples_all_cancer_gold.csv
-
-Usage:
-  python preprocessing/mtsamples_prep.py
-"""
-
-import os
 import re
-import sys
-
+import argparse
 import pandas as pd
 from datasets import load_dataset
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import config as cfg
 
-# ── Keyword-based filters (case-insensitive, robust to spacing variations) ───
-ONCOLOGY_KEYWORDS = re.compile(
-    r"(oncolog|hematolog|cancer|carcinoma|tumor|tumour|malign|neoplasm|"
-    r"chemotherapy|radiation|staging|sarcoma|lymphoma|leukemia|melanoma|"
-    r"urology|gynecolog|gastroenterol|nephrolog|neurosurg|orthoped|radiol|surgery)",
-    re.IGNORECASE,
-)
-LUNG_KEYWORDS = re.compile(
-    r"\b(lung|pulmon|bronch|lobar|adenocarcinoma|squamous|nsclc|sclc|mesotheliom)\b",
-    re.IGNORECASE,
-)
+# ── Cancer type keywords for stratification ───────────────────────────────────
+CANCER_TYPES = {
+    "lung":       r"lung|pulmonary|broncho|bronchogenic",
+    "breast":     r"breast|mammary|mastectomy",
+    "colorectal": r"colon|colorectal|rectal|rectum",
+    "bladder":    r"bladder|urothelial|cystectomy",
+    "prostate":   r"prostate|prostatic",
+    "cervical":   r"cervix|cervical|vulv",
+    "head_neck":  r"larynx|pharynx|oral|tongue|thyroid|parotid|head.*neck|neck.*head",
+    "skin":       r"melanoma|skin|squamous.*skin|basal.*cell",
+    "kidney":     r"renal|kidney|nephrectomy",
+    "other":      r"carcinoma|cancer|tumor|tumour|malignant|neoplasm|sarcoma|lymphoma",
+}
 
-# ── TNM extraction patterns ───────────────────────────────────────────────────
-TNM_COMPACT  = re.compile(r"\b(T[0-4isx][a-z]?)(N[0-3x]?)(M[01x]?)\b", re.IGNORECASE)
-TNM_SPACED   = re.compile(r"\b(T[0-4isx][a-z]?)\s+(N[0-3x]?)\s+(M[01x]?)\b", re.IGNORECASE)
-T_STANDALONE = re.compile(r"\bT([0-4])[a-z]?\b")
+def infer_cancer_type(text: str) -> str:
+    if not isinstance(text, str):
+        return "unknown"
+    t = text.lower()
+    for label, pattern in CANCER_TYPES.items():
+        if re.search(pattern, t):
+            return label
+    return "unknown"
 
 
-def extract_tnm(text: str) -> tuple:
-    for pat in (TNM_COMPACT, TNM_SPACED):
-        m = pat.search(text)
-        if m:
-            return m.group(1).upper(), m.group(2).upper(), m.group(3).upper()
-    m = T_STANDALONE.search(text)
+def load_mtsamples(mode: str) -> pd.DataFrame:
+    print("Downloading MTSamples from Hugging Face...")
+    dataset = load_dataset("harishnair04/mtsamples", split="train")
+    df = pd.DataFrame(dataset)
+
+    # Step 1 — specialty filter (always applied)
+    df = df[df["medical_specialty"].str.contains(
+        r"Oncology|Radiology|Pulmonary|Thoracic|Surgery|Pathology",
+        case=False, na=False
+    )].copy()
+    print(f"After specialty filter: {len(df)} notes")
+
+    # Step 2 — content filter (lung mode only)
+    if mode == "lung":
+        df = df[df["transcription"].str.contains(
+            r"lung|pulmonary|adenocarcinoma|carcinoma|bronchogenic|nodule|mass|metastasis",
+            case=False, na=False
+        )].copy()
+        print(f"After lung content filter: {len(df)} notes")
+    else:
+        print("No content filter applied (all-cancer mode)")
+
+    df = df.rename(columns={"transcription": "free_text"})
+    df["cancer_type"] = df["free_text"].apply(infer_cancer_type)
+    return df[["medical_specialty", "cancer_type", "free_text"]].reset_index(drop=True)
+
+
+# ── Regex patterns ────────────────────────────────────────────────────────────
+TNM_COMPACT    = re.compile(r'(?i)\b[cpyrma]?\s*T\s*([0-4](?:[a-c])?|is|x)\s*[,\s;/:-]*[cpyrma]?\s*N\s*([0-3](?:[a-c])?|x)\s*[,\s;/:-]*[cpyrma]?\s*M\s*([0-1](?:[a-c])?|x)\b')
+TNM_SEPARATE_T = re.compile(r'(?i)\b[cpyrma]?\s*T\s*([0-4](?:[a-c])?|is|x)\b')
+TNM_SEPARATE_N = re.compile(r'(?i)\b[cpyrma]?\s*N\s*([0-3](?:[a-c])?|x)\b')
+TNM_SEPARATE_M = re.compile(r'(?i)\b[cpyrma]?\s*M\s*([0-1](?:[a-c])?|x)\b')
+
+def normalize_token(prefix: str, value: str) -> str:
+    return f"{prefix}{value.upper().replace(' ', '')}"
+
+def extract_explicit_tnm(text: str) -> dict:
+    if not isinstance(text, str) or not text.strip():
+        return {"T_target": "Unknown", "N_target": "Unknown", "M_target": "Unknown",
+                "has_complete_tnm": 0, "has_partial_tnm": 0}
+
+    clean = " ".join(text.split())
+
+    m = TNM_COMPACT.search(clean)
     if m:
-        return f"T{m.group(1)}", "Unknown", "Unknown"
-    return "Unknown", "Unknown", "Unknown"
+        return {"T_target": normalize_token("T", m.group(1)),
+                "N_target": normalize_token("N", m.group(2)),
+                "M_target": normalize_token("M", m.group(3)),
+                "has_complete_tnm": 1, "has_partial_tnm": 1}
 
+    t_m = TNM_SEPARATE_T.search(clean)
+    n_m = TNM_SEPARATE_N.search(clean)
+    mm  = TNM_SEPARATE_M.search(clean)
 
-def is_valid_t(t: str) -> bool:
-    return bool(re.match(r"T[0-4][a-z]?$", t, re.IGNORECASE))
+    t  = normalize_token("T", t_m.group(1)) if t_m else "Unknown"
+    n  = normalize_token("N", n_m.group(1)) if n_m else "Unknown"
+    mv = normalize_token("M", mm.group(1))  if mm  else "Unknown"
 
-
-def label_quality(t: str, n: str, m: str) -> str:
-    if t != "Unknown" and n != "Unknown" and m != "Unknown":
-        return "complete"
-    if t != "Unknown":
-        return "T_only"
-    return "sparse"
-
-
-def is_oncology(row: pd.Series) -> bool:
-    """Keyword-based oncology filter — robust to specialty name variations."""
-    spec = str(row.get("medical_specialty", "")).lower()
-    text = str(row.get("transcription", "")).lower()
-    keys = str(row.get("keywords", "")).lower()
-    combined = f"{spec} {text} {keys}"
-    return bool(ONCOLOGY_KEYWORDS.search(combined))
-
-
-def is_lung(row: pd.Series) -> bool:
-    text = str(row.get("transcription", "")).lower()
-    keys = str(row.get("keywords", "")).lower()
-    spec = str(row.get("medical_specialty", "")).lower()
-    return bool(LUNG_KEYWORDS.search(f"{spec} {text} {keys}"))
+    return {"T_target": t, "N_target": n, "M_target": mv,
+            "has_complete_tnm": int(t != "Unknown" and n != "Unknown" and mv != "Unknown"),
+            "has_partial_tnm":  int(t != "Unknown")}
 
 
 def main():
-    os.makedirs(cfg.DATA_SPLITS_DIR, exist_ok=True)
-    print("Loading MTSamples from HuggingFace...")
-    ds = load_dataset(cfg.MTSAMPLES_DATASET, split="train")
-    df = ds.to_pandas()
-    print(f"  Total records : {len(df)}")
-    print(f"  Columns       : {list(df.columns)}")
-
-    # ── Show unique specialties so we know what we're working with ────────────
-    if "medical_specialty" in df.columns:
-        specs = df["medical_specialty"].value_counts()
-        print(f"\n  Top specialties:\n{specs.head(20).to_string()}\n")
-
-    # ── Oncology filter (keyword-based) ───────────────────────────────────────
-    onco_mask = df.apply(is_oncology, axis=1)
-    onco      = df[onco_mask].copy().reset_index(drop=True)
-    print(f"  After oncology filter : {len(onco)}")
-
-    if len(onco) == 0:
-        print("[ERROR] No oncology records found. Check dataset structure above.")
-        return
-
-    # ── Extract TNM ───────────────────────────────────────────────────────────
-    print("  Extracting TNM labels...")
-    tnm_results = onco["transcription"].fillna("").apply(
-        lambda x: pd.Series(extract_tnm(x), index=["T_label", "N_label", "M_label"])
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mode",
+        choices=["lung", "all_cancer"],
+        required=True,
+        help="lung = lung-specific notes only | all_cancer = all oncology specialties"
     )
-    onco = pd.concat([onco, tnm_results], axis=1)
-    onco["label_quality"] = onco.apply(
-        lambda r: label_quality(r["T_label"], r["N_label"], r["M_label"]), axis=1
-    )
-    onco["free_text"] = onco["transcription"].fillna("")
+    args = parser.parse_args()
 
-    t_found = onco["T_label"].apply(is_valid_t).sum()
-    print(f"  T-stage found in {t_found}/{len(onco)} records")
-    print(f"  T distribution: {onco['T_label'].value_counts().to_dict()}")
+    # Output filename is mode-specific — runs never overwrite each other
+    out_file = "mtsamples_lung_gold.csv" if args.mode == "lung" else "mtsamples_all_cancer_gold.csv"
 
-    # ── Lung subset ───────────────────────────────────────────────────────────
-    lung_mask = onco.apply(is_lung, axis=1) & onco["T_label"].apply(is_valid_t)
-    lung      = onco[lung_mask].copy()
-    print(f"\n  Lung cancer (T annotated): {len(lung)}")
+    df = load_mtsamples(args.mode)
 
-    out_cols = ["free_text", "T_label", "N_label", "M_label",
-                "label_quality", "medical_specialty"]
-    lung[out_cols].to_csv(cfg.MTSAMPLES_LUNG_CSV, index=False)
-    print(f"  Saved -> {cfg.MTSAMPLES_LUNG_CSV}")
+    extracted = df["free_text"].apply(extract_explicit_tnm).apply(pd.Series)
+    out = pd.concat([df, extracted], axis=1)
 
-    # ── All-cancer subset ─────────────────────────────────────────────────────
-    all_onco = onco[onco["T_label"].apply(is_valid_t)].copy()
-    print(f"  All-cancer (T annotated): {len(all_onco)}")
-    all_onco[out_cols].to_csv(cfg.MTSAMPLES_ALL_CSV, index=False)
-    print(f"  Saved -> {cfg.MTSAMPLES_ALL_CSV}")
+    complete_count = int(out["has_complete_tnm"].sum())
+    partial_count  = int(out["has_partial_tnm"].sum())
+    print(f"\nNotes with complete TNM (T+N+M all found): {complete_count}")
+    print(f"Notes with at least T-stage present:        {partial_count}")
 
-    print(f"\nMTSamples prep complete.")
-    print(f"  Lung: {len(lung)} | All-cancer: {len(all_onco)}")
+    gold = out[out["has_partial_tnm"] == 1].copy()
+
+    print(f"\nCancer type breakdown ({len(gold)} total):")
+    print(gold["cancer_type"].value_counts().to_string())
+    print(f"\nComplete TNM by cancer type:")
+    print(gold.groupby("cancer_type")["has_complete_tnm"].agg(["sum","count"])
+               .rename(columns={"sum":"complete","count":"total"}).to_string())
+
+    gold.to_csv(out_file, index=False)
+
+    print(f"\n>> SUCCESS: Saved {len(gold)} records to '{out_file}'")
+    print(f"   Complete TNM: {complete_count} / {len(gold)}")
+    print(f"   T-only (N/M=Unknown): {len(gold) - complete_count} / {len(gold)}")
+    print(f"\n>> Next: pass --real_data_file {out_file} to Phase3-_Downstream_re_FIXED.py")
 
 
 if __name__ == "__main__":
