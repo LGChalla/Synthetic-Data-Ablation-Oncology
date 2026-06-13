@@ -83,11 +83,15 @@ ADAPTER_NAMES = {
 }
 
 # ── MTSamples benchmark ────────────────────────────────────────────────────────
-MTSAMPLES_DATASET  = "harishnair04/mtsamples"
-MTSAMPLES_LUNG_CSV = os.path.join(DATA_SPLITS_DIR, "mtsamples_lung_gold.csv")
-MTSAMPLES_ALL_CSV  = os.path.join(DATA_SPLITS_DIR, "mtsamples_all_cancer_gold.csv")
-TSTR_BOOTSTRAP_N   = 1000
-
+#MTSAMPLES_DATASET  = "harishnair04/mtsamples"
+#MTSAMPLES_LUNG_CSV = os.path.join(DATA_SPLITS_DIR, "mtsamples_lung_gold.csv")
+#MTSAMPLES_ALL_CSV  = os.path.join(DATA_SPLITS_DIR, "mtsamples_all_cancer_gold.csv")
+#TSTR_BOOTSTRAP_N   = 1000
+# --- Real-world TSTR sets: TCGA pathology reports (pathologist-assigned TNM) ---
+# Built by preprocessing/tcga_prep.py. Replaces the regex-extracted MTSamples
+# sets above, whose labels were unreliable.
+TCGA_LUNG_CSV  = os.path.join(DATA_SPLITS_DIR, "tcga_lung_gold.csv")
+TCGA_CROSS_CSV = os.path.join(DATA_SPLITS_DIR, "tcga_crosstumor_gold.csv")
 # ── Generator models (both used in all ablations) ─────────────────────────────
 GENERATOR_MODELS = [
     "gpt-4o",                              # OpenAI API — requires OPENAI_API_KEY
