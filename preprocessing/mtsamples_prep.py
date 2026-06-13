@@ -144,7 +144,7 @@ def main():
     print(f"\n>> SUCCESS: Saved {len(gold)} records to '{out_file}'")
     print(f"   Complete TNM: {complete_count} / {len(gold)}")
     print(f"   T-only (N/M=Unknown): {len(gold) - complete_count} / {len(gold)}")
-    print(f"\n>> Next: pass --real_data_file {out_file} to Phase3-_Downstream_re_FIXED.py")
+    #print(f"\n>> Next: pass --real_data_file {out_file} to Phase3-_Downstream_re_FIXED.py")
 
 
 if __name__ == "__main__":
