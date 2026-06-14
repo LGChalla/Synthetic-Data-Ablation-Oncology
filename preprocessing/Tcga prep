@@ -105,11 +105,12 @@ def load_labels() -> pd.DataFrame:
     return lab
 
 
-# ---------------------------------------------------------------------------
 # Label normalisation: strip subdivision suffixes to the main category.
-#   T1a/T1b/T1c -> T1 ; T2a -> T2 ; etc.  T0/TX/Tis kept as-is (dropped later
-#   unless --keep-noncore) because the generator only emits T1-T4 / N0-N3 / M0-M1.
-# ---------------------------------------------------------------------------
+# Examples:
+#   T1a/T1b/T1c -> T1
+#   T2a/T2b     -> T2
+#   N1a         -> N1
+# Non-core labels (e.g., T0, TX, Tis) are retained unless filtered later.
 def normalise(value, prefix: str):
     if not isinstance(value, str):
         return None
@@ -141,38 +142,49 @@ def main():
     df["cancer_type"] = df["project_id"].str.replace("TCGA-", "", regex=False)
 
     if not args.keep_noncore:
-    df = df[
-        df["T_target"].isin({"T1", "T2", "T3", "T4"})
-        & df["N_target"].isin({"N0", "N1", "N2", "N3"})
-        & df["M_target"].isin({"M0", "M1"})
-    ].copy()
+        df = df[
+            df["T_target"].isin({"T1", "T2", "T3", "T4"})
+            & df["N_target"].isin({"N0", "N1", "N2", "N3"})
+            & df["M_target"].isin({"M0", "M1"})
+        ].copy()
 
-    cols = ["free_text", "T_target", "N_target", "M_target",
-            "T_label", "N_label", "M_label", "cancer_type", "project_id"]
+    cols = [
+        "free_text",
+        "T_target",
+        "N_target",
+        "M_target",
+        "T_label",
+        "N_label",
+        "M_label",
+        "cancer_type",
+        "project_id",
+    ]
 
     lung = df[df["project_id"].isin(LUNG_PROJECTS)][cols]
     cross = df[~df["project_id"].isin(LUNG_PROJECTS)][cols]
 
     lung_path = f"{OUT_DIR}/tcga_lung_gold.csv"
     cross_path = f"{OUT_DIR}/tcga_crosstumor_gold.csv"
+
     lung.to_csv(lung_path, index=False)
     cross.to_csv(cross_path, index=False)
 
     def report(name, sub, path):
 
-    t_vc = sub["T_target"].value_counts().to_dict()
-    n_vc = sub["N_target"].value_counts().to_dict()
-    m_vc = sub["M_target"].value_counts().to_dict()
+        t_vc = sub["T_target"].value_counts().to_dict()
+        n_vc = sub["N_target"].value_counts().to_dict()
+        m_vc = sub["M_target"].value_counts().to_dict()
 
-    print(f"\n{name}: n={len(sub)} -> {path}")
+        print(f"\n{name}: n={len(sub)} -> {path}")
 
-    print(f"  T classes: {t_vc}")
-    print(f"  N classes: {n_vc}")
-    print(f"  M classes: {m_vc}")
+        print(f"  T classes: {t_vc}")
+        print(f"  N classes: {n_vc}")
+        print(f"  M classes: {m_vc}")
 
     print("\n" + "=" * 60)
     report("LUNG (LUAD+LUSC)", lung, lung_path)
     report("CROSS-TUMOR (all non-lung)", cross, cross_path)
+
     print("\nDone. Labels are TCGA pathologist-assigned (not extracted).")
 
 
