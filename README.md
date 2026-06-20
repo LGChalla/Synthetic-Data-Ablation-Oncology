@@ -79,7 +79,7 @@ ablations/               Three independent ablation studies — each runs fully 
     run_rag.py           Phase 1 + Phase 4 for Adapter E (full gate + MedCPT RAG)
     compare.py           SNOMED density comparison + Mann-Whitney U test
 
-preprocessing/           MTSamples TNM extraction
+preprocessing/           TCGA TNM extraction
 config.py                All paths, model IDs, and hyperparameters
 ```
 
