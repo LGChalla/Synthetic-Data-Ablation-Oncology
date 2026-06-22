@@ -14,13 +14,13 @@ Every condition generates synthetic lung cancer staging records through the same
 
 **Five conditions. Five adapters. One TSTR evaluation table.**
 
-| Adapter | Condition | Gate applied | RAG |
-|---------|-----------|-------------|-----|
+| Adapter | Condition | Gate applied |
+|---------|-----------|-------------|
 | A | `ungated` | None | No |
-| B | `schema_only` | JSON schema completeness | No |
-| C | `schema_onto` | Schema + SNOMED CT ontology | No |
-| D | `full_norag` | Full G(x): schema + ontology + AJCC logic | No |
-| E | `full_rag` | Full G(x) | Yes — MedCPT PubMed retrieval |
+| B | `schema_only` | JSON schema completeness |
+| C | `schema_onto` | Schema + SNOMED CT ontology | 
+| D | `full_norag` | Full G(x): schema + ontology + AJCC logic | 
+| E | `full_rag` | Full G(x) with MedCPT PubMed retrieval |
 
 All five adapters are evaluated on the same three test sets under TSTR — trained on synthetic, tested on real MTSamples clinical notes.
 
