@@ -29,7 +29,7 @@ All five adapters are evaluated on the same three test sets under TSTR — train
 ## Pipeline
 
 ```
-preprocessing/mtsamples_prep.py      extract TNM labels from MTSamples
+preprocessing/Tcga prep.py      extract TNM labels from The Cancer Genome Atlas (TCGA) pathology report samples
 
 Phase 1  (phases/phase1_generate.py)
   Generate records under a specific condition
